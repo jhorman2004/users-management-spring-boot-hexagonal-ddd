@@ -1,0 +1,22 @@
+package com.jcaa.accounts.infrastructure.adapter.persistence.config;
+
+public record DatabaseConfig(
+    String host,
+    int port,
+    String databaseName,
+    String username,
+    String password,
+    String sslMode) {
+  private static final String URL_TEMPLATE =
+      "jdbc:mysql://%s:%d/%s?sslMode=%s&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+
+  public String buildJdbcUrl() {
+    return String.format(URL_TEMPLATE, host, port, databaseName, sslMode);
+  }
+
+  /** Oculta la contraseña para que nunca termine en un log. */
+  @Override
+  public String toString() {
+    return "DatabaseConfig[host=" + host + ", port=" + port + ", databaseName=" + databaseName + "]";
+  }
+}

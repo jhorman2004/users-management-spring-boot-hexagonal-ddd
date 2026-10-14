@@ -21,6 +21,7 @@
     <module>notification-events</module>
     <module>users-service</module>
     <module>notifier-service</module>
+    <module>accounts-service</module>
   </modules>
 
   <properties>

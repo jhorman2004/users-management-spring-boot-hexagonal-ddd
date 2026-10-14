@@ -1,5 +1,6 @@
 package com.jcaa.usersmanagement.infrastructure.entrypoint.rest.advice;
 
+import com.jcaa.usersmanagement.domain.exception.AccountProvisioningException;
 import com.jcaa.usersmanagement.domain.exception.DomainException;
 import com.jcaa.usersmanagement.domain.exception.InvalidCredentialsException;
 import com.jcaa.usersmanagement.domain.exception.UserAlreadyExistsException;
@@ -28,6 +29,12 @@ public class GlobalExceptionHandler {
   @ResponseStatus(HttpStatus.CONFLICT)
   public ApiErrorResponse handleUserAlreadyExists(final UserAlreadyExistsException exception) {
     return new ApiErrorResponse(HttpStatus.CONFLICT.value(), exception.getMessage());
+  }
+
+  @ExceptionHandler(AccountProvisioningException.class)
+  @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+  public ApiErrorResponse handleAccountProvisioning(final AccountProvisioningException exception) {
+    return new ApiErrorResponse(HttpStatus.SERVICE_UNAVAILABLE.value(), exception.getMessage());
   }
 
   @ExceptionHandler(InvalidCredentialsException.class)

@@ -1,5 +1,6 @@
 package com.jcaa.usersmanagement.infrastructure.entrypoint.rest.controller;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -20,6 +21,7 @@ import com.jcaa.usersmanagement.application.service.dto.command.UpdateUserComman
 import com.jcaa.usersmanagement.application.service.dto.query.GetUserByIdQuery;
 import com.jcaa.usersmanagement.domain.enums.UserRole;
 import com.jcaa.usersmanagement.domain.enums.UserStatus;
+import com.jcaa.usersmanagement.domain.exception.AccountProvisioningException;
 import com.jcaa.usersmanagement.domain.model.UserModel;
 import com.jcaa.usersmanagement.domain.valueobject.UserEmail;
 import com.jcaa.usersmanagement.domain.valueobject.UserId;
@@ -118,6 +120,28 @@ class UserRestControllerTest {
         .perform(post("/api/users").contentType(MediaType.APPLICATION_JSON).content(request))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.id").value(ID));
+  }
+
+  @Test
+  @DisplayName("POST /api/users responde 503 cuando no se pudo crear la cuenta")
+  void shouldReturnServiceUnavailableWhenAccountCannotBeCreated() throws Exception {
+    final String request =
+        """
+        {
+          "id": "%s",
+          "name": "Ada Lovelace",
+          "email": "ada@example.com",
+          "password": "Secure123!",
+          "role": "ADMIN"
+        }
+        """.formatted(ID);
+    when(createUserUseCase.execute(any()))
+        .thenThrow(AccountProvisioningException.becauseAccountServiceFailed(ID, "HTTP 503"));
+
+    mockMvc
+        .perform(post("/api/users").contentType(MediaType.APPLICATION_JSON).content(request))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(jsonPath("$.status").value(503));
   }
 
   @Test

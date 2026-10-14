@@ -66,6 +66,14 @@ public interface UserRestControllerDocs {
         content =
             @Content(
                 mediaType = "application/json",
+                schema = @Schema(implementation = ApiErrorResponse.class))),
+    @ApiResponse(
+        responseCode = "503",
+        description =
+            "No se pudo crear la cuenta en accounts-service; el usuario no queda registrado.",
+        content =
+            @Content(
+                mediaType = "application/json",
                 schema = @Schema(implementation = ApiErrorResponse.class)))
   })
   UserRestResponse create(@Valid @RequestBody CreateUserRestRequest request);
