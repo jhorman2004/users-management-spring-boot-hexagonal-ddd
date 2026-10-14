@@ -42,6 +42,6 @@ build/
 
 /spec/
 
-# Secretos locales. Nunca deben versionarse.
-/.environments/
+# Secretos locales. Nunca deben versionarse (en la raíz o dentro de un módulo).
+.environments/
 /.env

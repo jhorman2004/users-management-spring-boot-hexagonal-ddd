@@ -2,9 +2,9 @@
 .github
 .idea
 .vscode
-.environments
+**/.environments
 .env
-target
+**/target
 *.iml
 *.log
 spec
