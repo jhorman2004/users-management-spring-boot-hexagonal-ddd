@@ -1,3 +1,17 @@
+# Blueprint de Render: los tres microservicios, cada uno con su Dockerfile.
+# Todos se construyen desde la raíz del repo (multi-módulo) y se redespliegan solo cuando cambian
+# sus carpetas (buildFilter). Las variables "sync: false" se completan en el panel de Render.
+#
+# Orden sugerido: desplegar primero accounts-service y notifier-service, copiar sus URL
+# .onrender.com y luego completar ACCOUNTS_BASE_URL y NOTIFIER_WAKEUP_URL en users-management-api.
+
+envVarGroups:
+  # Clave compartida users <-> accounts (header X-Internal-Api-Key). Render la genera.
+  - name: internal-api
+    envVars:
+      - key: INTERNAL_API_KEY
+        generateValue: true
+
 services:
   - type: web
     name: users-management-api
@@ -8,11 +22,20 @@ services:
     branch: main
     autoDeployTrigger: commit
     healthCheckPath: /v3/api-docs
+    buildFilter:
+      paths:
+        - pom.xml
+        - notification-events/**
+        - users-service/**
     envVars:
+      - fromGroup: internal-api
+      - key: SPRING_PROFILES_ACTIVE
+        value: cloud
+      # TiDB (base crud_usuarios)
       - key: DB_HOST
         sync: false
       - key: DB_PORT
-        sync: false
+        value: "4000"
       - key: DB_NAME
         value: crud_usuarios
       - key: DB_USERNAME
@@ -20,14 +43,103 @@ services:
       - key: DB_PASSWORD
         sync: false
       - key: DB_SSL_MODE
-        value: REQUIRED
+        value: VERIFY_IDENTITY
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION_SECONDS
+        value: "900"
+      # Aiven Kafka (SASL)
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+      - key: KAFKA_USERNAME
+        sync: false
+      - key: KAFKA_PASSWORD
+        sync: false
+      - key: KAFKA_CA_CERT
+        sync: false
+      # accounts-service: URL pública, p. ej. https://accounts-service-xxxx.onrender.com
+      - key: ACCOUNTS_BASE_URL
+        sync: false
+      # Plan gratuito: accounts puede tardar ~1 min en despertar
+      - key: ACCOUNTS_READ_TIMEOUT
+        value: 70s
+      - key: ACCOUNTS_RETRY_MAX_ATTEMPTS
+        value: "2"
+      # Health check de notifier-service, p. ej. https://notifier-service-xxxx.onrender.com/actuator/health
+      - key: NOTIFIER_WAKEUP_URL
+        sync: false
+
+  - type: web
+    name: accounts-service
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./accounts-service/Dockerfile
+    plan: free
+    branch: main
+    autoDeployTrigger: commit
+    healthCheckPath: /actuator/health
+    buildFilter:
+      paths:
+        - pom.xml
+        - notification-events/**
+        - accounts-service/**
+    envVars:
+      - fromGroup: internal-api
+      - key: SPRING_PROFILES_ACTIVE
+        value: cloud
+      # TiDB (base crud_cuentas)
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "4000"
+      - key: DB_NAME
+        value: crud_cuentas
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSL_MODE
+        value: VERIFY_IDENTITY
+      # Aiven Kafka (SASL)
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+      - key: KAFKA_USERNAME
+        sync: false
+      - key: KAFKA_PASSWORD
+        sync: false
+      - key: KAFKA_CA_CERT
+        sync: false
+
+  - type: web
+    name: notifier-service
+    runtime: docker
+    dockerContext: .
+    dockerfilePath: ./notifier-service/Dockerfile
+    plan: free
+    branch: main
+    autoDeployTrigger: commit
+    healthCheckPath: /actuator/health
+    buildFilter:
+      paths:
+        - pom.xml
+        - notification-events/**
+        - notifier-service/**
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: cloud
+      # Aiven Kafka (SASL)
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+      - key: KAFKA_USERNAME
+        sync: false
+      - key: KAFKA_PASSWORD
+        sync: false
+      - key: KAFKA_CA_CERT
+        sync: false
+      # Brevo (clave API REST "xkeysib-...", no la SMTP)
       - key: BREVO_API_KEY
         sync: false
       - key: BREVO_FROM_ADDRESS
         sync: false
       - key: BREVO_FROM_NAME
         value: Gestion de Usuarios
-      - key: JWT_SECRET
-        generateValue: true
-      - key: JWT_EXPIRATION_SECONDS
-        value: "900"

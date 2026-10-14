@@ -32,14 +32,17 @@ public class KafkaUserNotificationAdapter implements UserNotificationPort {
 
   private final KafkaTemplate<String, String> kafkaTemplate;
   private final ObjectMapper objectMapper;
+  private final NotifierWakeUpClient notifierWakeUpClient;
   private final String topic;
 
   public KafkaUserNotificationAdapter(
       final KafkaTemplate<String, String> kafkaTemplate,
       final ObjectMapper objectMapper,
+      final NotifierWakeUpClient notifierWakeUpClient,
       @Value(PROP_TOPIC) final String topic) {
     this.kafkaTemplate = kafkaTemplate;
     this.objectMapper = objectMapper;
+    this.notifierWakeUpClient = notifierWakeUpClient;
     this.topic = topic;
   }
 
@@ -68,6 +71,7 @@ public class KafkaUserNotificationAdapter implements UserNotificationPort {
               (result, exception) -> {
                 if (Objects.isNull(exception)) {
                   log.info(LOG_PUBLISHED, event.eventId(), event.type());
+                  notifierWakeUpClient.wakeUp();
                 } else {
                   logFailure(event, exception);
                 }

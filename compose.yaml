@@ -1,16 +1,25 @@
+# Entorno local completo: MySQL (con las dos bases), Kafka y los tres microservicios.
+#
+#   Todo:        docker compose up -d --build
+#   Solo Kafka:  docker compose up -d kafka      (para correr los servicios desde IntelliJ)
+#
+# Las claves salen del archivo .env (copiar compose.env.example como .env).
 services:
   mysql:
     image: mysql:8.4
     environment:
       MYSQL_DATABASE: crud_usuarios
       MYSQL_USER: users_app
-      MYSQL_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD en el archivo .env local}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD en el archivo .env local}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-}
     ports:
-      - "127.0.0.1:3306:3306"
+      # 3307 en el PC: el 3306 suele estar ocupado por el MySQL instalado localmente
+      - "127.0.0.1:3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./users-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+      - ./users-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/001-users-schema.sql:ro
+      - ./accounts-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/002-accounts-schema.sql:ro
+      - ./docker/mysql/003-grant-accounts.sql:/docker-entrypoint-initdb.d/003-grant-accounts.sql:ro
     healthcheck:
       test:
         - CMD-SHELL
@@ -21,28 +30,110 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  api:
+  kafka:
+    image: apache/kafka:3.8.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      # PLAINTEXT: desde el PC (localhost:9092). DOCKER: desde los contenedores (kafka:29092).
+      KAFKA_LISTENERS: PLAINTEXT://:9092,DOCKER://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,DOCKER://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,DOCKER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Como en Aiven: los tópicos no se crean solos (en local los crea notifier-service al arrancar)
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    ports:
+      - "127.0.0.1:9092:9092"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+
+  users-service:
     build:
       context: .
       dockerfile: users-service/Dockerfile
-    image: users-management-api:local
+    image: users-service:local
     environment:
       PORT: "8080"
       DB_HOST: mysql
       DB_PORT: "3306"
       DB_NAME: crud_usuarios
       DB_USERNAME: users_app
-      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD en el archivo .env local}
+      DB_PASSWORD: ${DB_PASSWORD:-}
       DB_SSL_MODE: DISABLED
-      BREVO_API_KEY: ${BREVO_API_KEY:?Defina BREVO_API_KEY en el archivo .env local}
-      BREVO_FROM_ADDRESS: ${BREVO_FROM_ADDRESS:?Defina BREVO_FROM_ADDRESS en el archivo .env local}
-      BREVO_FROM_NAME: ${BREVO_FROM_NAME:-Gestion de Usuarios}
-      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en el archivo .env local}
+      JWT_SECRET: ${JWT_SECRET:-}
       JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-900}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      ACCOUNTS_BASE_URL: http://accounts-service:8081
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
       mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      accounts-service:
+        condition: service_started
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  accounts-service:
+    build:
+      context: .
+      dockerfile: accounts-service/Dockerfile
+    image: accounts-service:local
+    environment:
+      PORT: "8081"
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: crud_cuentas
+      DB_USERNAME: users_app
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_SSL_MODE: DISABLED
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
+    ports:
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  notifier-service:
+    build:
+      context: .
+      dockerfile: notifier-service/Dockerfile
+    image: notifier-service:local
+    environment:
+      PORT: "8082"
+      # "local" solo registra los correos; déjalo vacío en .env para enviarlos de verdad por Brevo
+      SPRING_PROFILES_ACTIVE: ${NOTIFIER_PROFILE-local}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      BREVO_FROM_ADDRESS: ${BREVO_FROM_ADDRESS:-}
+      BREVO_FROM_NAME: ${BREVO_FROM_NAME:-Gestion de Usuarios}
+    ports:
+      - "127.0.0.1:8082:8082"
+    depends_on:
+      kafka:
         condition: service_healthy
     restart: unless-stopped
     security_opt:

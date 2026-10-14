@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Microservicios (los 3)" type="CompoundRunConfigurationType">
+    <toRun name="accounts-service" type="Application" />
+    <toRun name="notifier-service" type="Application" />
+    <toRun name="users-service" type="Application" />
+    <method v="2" />
+  </configuration>
+</component>
