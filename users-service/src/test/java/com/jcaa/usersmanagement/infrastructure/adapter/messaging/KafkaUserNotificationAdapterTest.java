@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +49,7 @@ class KafkaUserNotificationAdapterTest {
   private static final String EMAIL = "john@example.com";
 
   @Mock private KafkaTemplate<String, String> kafkaTemplate;
+  @Mock private NotifierWakeUpClient notifierWakeUpClient;
   @Captor private ArgumentCaptor<String> payloadCaptor;
 
   private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
@@ -56,7 +58,8 @@ class KafkaUserNotificationAdapterTest {
 
   @BeforeEach
   void setUp() {
-    adapter = new KafkaUserNotificationAdapter(kafkaTemplate, objectMapper, TOPIC);
+    adapter =
+        new KafkaUserNotificationAdapter(kafkaTemplate, objectMapper, notifierWakeUpClient, TOPIC);
     user =
         new UserModel(
             new UserId(USER_ID),
@@ -87,6 +90,7 @@ class KafkaUserNotificationAdapterTest {
         () -> assertEquals("ADMIN", event.data().get("role")),
         () -> assertEquals("PENDING", event.data().get("status")),
         () -> assertFalse(payloadCaptor.getValue().contains("$2a$"), "nunca el hash ni la clave"));
+    verify(notifierWakeUpClient).wakeUp();
   }
 
   @Test
@@ -115,6 +119,7 @@ class KafkaUserNotificationAdapterTest {
 
     // Act & Assert
     assertDoesNotThrow(() -> adapter.notifyUserCreated(user));
+    verify(notifierWakeUpClient, never()).wakeUp();
   }
 
   @Test
@@ -126,5 +131,6 @@ class KafkaUserNotificationAdapterTest {
 
     // Act & Assert
     assertDoesNotThrow(() -> adapter.notifyUserCreated(user));
+    verify(notifierWakeUpClient, never()).wakeUp();
   }
 }

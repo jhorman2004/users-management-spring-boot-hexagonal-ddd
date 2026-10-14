@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="notifier-service" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.jcaa.notifier.NotifierApplication" />
+    <module name="notifier-service" />
+    <!-- Perfil local: registra los correos en el log en vez de enviarlos. Quítalo para usar Brevo. -->
+    <option name="VM_PARAMETERS" value="-Dspring.profiles.active=local" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
