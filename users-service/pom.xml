@@ -15,6 +15,13 @@
 
   <dependencies>
 
+    <!-- Contrato de los mensajes de Kafka compartido con notifier y accounts -->
+    <dependency>
+      <groupId>com.jcaa.usersmanagement</groupId>
+      <artifactId>notification-events</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
     <!-- ======================================================== -->
     <!-- Spring Boot Starters                                       -->
     <!-- ======================================================== -->
@@ -40,6 +47,12 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+
+    <!-- Kafka: publica los mensajes "nuevo correo" (paso 2 del diagrama) -->
+    <dependency>
+      <groupId>org.springframework.kafka</groupId>
+      <artifactId>spring-kafka</artifactId>
     </dependency>
 
     <!-- ======================================================== -->

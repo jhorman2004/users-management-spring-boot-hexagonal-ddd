@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import com.jcaa.usersmanagement.application.port.out.GetUserByEmailPort;
 import com.jcaa.usersmanagement.application.port.out.SaveUserPort;
+import com.jcaa.usersmanagement.application.port.out.UserNotificationPort;
 import com.jcaa.usersmanagement.application.service.dto.command.CreateUserCommand;
 import com.jcaa.usersmanagement.domain.enums.UserRole;
 import com.jcaa.usersmanagement.domain.enums.UserStatus;
@@ -37,7 +38,7 @@ class CreateUserServiceTest {
 
   @Mock private SaveUserPort saveUserPort;
   @Mock private GetUserByEmailPort getUserByEmailPort;
-  @Mock private EmailNotificationService emailNotificationService;
+  @Mock private UserNotificationPort userNotificationPort;
 
   private CreateUserService service;
 
@@ -48,7 +49,7 @@ class CreateUserServiceTest {
           new CreateUserService(
               saveUserPort,
               getUserByEmailPort,
-              emailNotificationService,
+              userNotificationPort,
               validatorFactory.getValidator());
     }
   }
@@ -84,7 +85,7 @@ class CreateUserServiceTest {
         () -> assertEquals("u-01", result.getId().value(), "id del usuario guardado"));
 
     verify(saveUserPort).save(any(UserModel.class));
-    verify(emailNotificationService).notifyUserCreated(savedUser, "Pass1234");
+    verify(userNotificationPort).notifyUserCreated(savedUser);
   }
 
   // ── email duplicado
@@ -110,7 +111,7 @@ class CreateUserServiceTest {
     // Act & Assert
     assertThrows(UserAlreadyExistsException.class, () -> service.execute(command));
     verify(saveUserPort, never()).save(any());
-    verify(emailNotificationService, never()).notifyUserCreated(any(), any());
+    verify(userNotificationPort, never()).notifyUserCreated(any());
   }
 
   // ── validación del command
@@ -125,6 +126,6 @@ class CreateUserServiceTest {
 
     // Act & Assert
     assertThrows(ConstraintViolationException.class, () -> service.execute(command));
-    verifyNoInteractions(saveUserPort, getUserByEmailPort, emailNotificationService);
+    verifyNoInteractions(saveUserPort, getUserByEmailPort, userNotificationPort);
   }
 }

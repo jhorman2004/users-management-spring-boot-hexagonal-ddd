@@ -18,7 +18,9 @@
   <packaging>pom</packaging>
 
   <modules>
+    <module>notification-events</module>
     <module>users-service</module>
+    <module>notifier-service</module>
   </modules>
 
   <properties>

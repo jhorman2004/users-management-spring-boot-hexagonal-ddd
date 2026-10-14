@@ -4,6 +4,7 @@ import com.jcaa.usersmanagement.application.port.in.UpdateUserUseCase;
 import com.jcaa.usersmanagement.application.port.out.GetUserByEmailPort;
 import com.jcaa.usersmanagement.application.port.out.GetUserByIdPort;
 import com.jcaa.usersmanagement.application.port.out.UpdateUserPort;
+import com.jcaa.usersmanagement.application.port.out.UserNotificationPort;
 import com.jcaa.usersmanagement.application.service.dto.command.UpdateUserCommand;
 import com.jcaa.usersmanagement.application.service.mapper.UserApplicationMapper;
 import com.jcaa.usersmanagement.domain.exception.UserAlreadyExistsException;
@@ -26,7 +27,7 @@ public class UpdateUserService implements UpdateUserUseCase {
   private final UpdateUserPort updateUserPort;
   private final GetUserByIdPort getUserByIdPort;
   private final GetUserByEmailPort getUserByEmailPort;
-  private final EmailNotificationService emailNotificationService;
+  private final UserNotificationPort userNotificationPort;
   private final Validator validator;
 
   @Override
@@ -43,7 +44,7 @@ public class UpdateUserService implements UpdateUserUseCase {
         UserApplicationMapper.fromUpdateCommandToModel(command, current.getPassword());
     final UserModel updatedUser = updateUserPort.update(userToUpdate);
 
-    emailNotificationService.notifyUserUpdated(updatedUser);
+    userNotificationPort.notifyUserUpdated(updatedUser);
 
     return updatedUser;
   }
